@@ -12,6 +12,7 @@ cd "$ROOT"
 KSU_TAG="${KSU_TAG:-v0.9.5}"
 MODE="${KSU_HOOK_MODE:-kprobe}"     # kprobe | manual
 OUT="${OUT_DIR:-$ROOT/out}"
+case "$OUT" in /*) ;; *) OUT="$ROOT/$OUT" ;; esac
 
 log() { printf '\n=== %s ===\n' "$*"; }
 die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
