@@ -15,7 +15,7 @@
 import os
 import sys
 
-PATCHES = [
+MANUAL_PATCHES = [
     # ------------------------------------------------------------------ execve
     (
         "fs/exec.c",
@@ -152,6 +152,10 @@ SYSCALL_DEFINE4(newfstatat, int, dfd, const char __user *, filename,
 
 	error = vfs_fstatat(dfd, filename, &stat, flag);""",
     ),
+]
+
+
+COMMON_PATCHES = [
     # ------------------------------------------------- path_umount (KSU_UMOUNT)
     (
         "fs/namespace.c",
@@ -204,15 +208,20 @@ int path_umount(struct path *path, int flags);""",
 
 
 def main():
-    if len(sys.argv) != 2:
+    if len(sys.argv) not in (2, 3):
         print(__doc__)
         return 2
     kdir = sys.argv[1]
+    mode = sys.argv[2] if len(sys.argv) == 3 else "kprobe"
+    patches = list(COMMON_PATCHES)
+    if mode == "manual":
+        patches = MANUAL_PATCHES + patches
     if not os.path.isfile(os.path.join(kdir, "Makefile")):
         print(f"ERROR: {kdir}/Makefile がありません")
         return 2
 
-    for rel, marker, old, new in PATCHES:
+    print(f"hook mode: {mode}")
+    for rel, marker, old, new in patches:
         path = os.path.join(kdir, rel)
         if not os.path.isfile(path):
             print(f"ERROR: {rel} が見つかりません")

@@ -71,20 +71,42 @@ jobs:
           clang --version || true
           find source -maxdepth 4 -name clang -path '*build_tools*' | head -3
 
-      - name: Build kernel + repack boot.img
+      - name: "Build A: kprobe hook (official recommended)"
         env:
           KERNEL_DIR: ${{ inputs.kernel_dir }}
           EXTRA_CONFIGS: ${{ inputs.extra_configs }}
+          KSU_HOOK_MODE: kprobe
+          OUT_DIR: out-kprobe
         run: bash d42a/build.sh
 
-      - name: Upload artifact
+      - name: "Build B: manual hook (fallback, KPROBES off)"
+        env:
+          KERNEL_DIR: ${{ inputs.kernel_dir }}
+          EXTRA_CONFIGS: ${{ inputs.extra_configs }}
+          KSU_HOOK_MODE: manual
+          OUT_DIR: out-manual
+        run: bash d42a/build.sh
+
+      - name: Upload artifact (kprobe)
         uses: actions/upload-artifact@v4
         with:
-          name: boot-ksu-official
+          name: boot-ksu-kprobe
           if-no-files-found: error
           path: |
-            out/boot-ksu.img
-            out/Image.gz
-            out/Image
-            out/kernel.config
-            out/build.log
+            out-kprobe/boot-ksu.img
+            out-kprobe/Image.gz
+            out-kprobe/Image
+            out-kprobe/kernel.config
+            out-kprobe/build.log
+
+      - name: Upload artifact (manual)
+        uses: actions/upload-artifact@v4
+        with:
+          name: boot-ksu-manual
+          if-no-files-found: error
+          path: |
+            out-manual/boot-ksu.img
+            out-manual/Image.gz
+            out-manual/Image
+            out-manual/kernel.config
+            out-manual/build.log

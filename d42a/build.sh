@@ -10,6 +10,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 KSU_TAG="${KSU_TAG:-v0.9.5}"
+MODE="${KSU_HOOK_MODE:-kprobe}"     # kprobe | manual
+OUT="${OUT_DIR:-$ROOT/out}"
 
 log() { printf '\n=== %s ===\n' "$*"; }
 die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
@@ -47,8 +49,8 @@ fi
 grep -q 'kernelsu' drivers/Makefile || die "drivers/Makefile に kernelsu が追加されていません"
 
 # ------------------------------------------------------- 3. manual hooks
-log "manual hook をカーネルソースへ挿入（非 GKI 4.14）"
-python3 "$ROOT/d42a/patches/apply_ksu_hooks.py" "$KD"
+log "フック設定をカーネルソースへ適用 (mode=$MODE)"
+python3 "$ROOT/d42a/patches/apply_ksu_hooks.py" "$KD" "$MODE"
 
 # ---------------------------------------------------------------- 4. config
 log "defconfig を適用"
@@ -59,7 +61,8 @@ export ARCH=arm64
 export SUBARCH=arm
 export LC_ALL=C
 
-make O=out ARCH=arm64 d42a_defconfig
+mkdir -p "$OUT/obj"
+make O="$OUT/obj" ARCH=arm64 d42a_defconfig
 
 # 純正 config からの変更点だけを明示する
 #  - KSU: in-tree 組み込み（0.9.5 は OVERLAY_FS 必須）
@@ -79,17 +82,21 @@ scripts/config --file out/.config \
 
 for c in ${EXTRA_CONFIGS:-}; do
   echo "extra config: $c"
-  scripts/config --file out/.config -e "$c"
+  scripts/config --file "$OUT/obj/.config" -e "$c"
 done
 
-make O=out ARCH=arm64 olddefconfig
+make O="$OUT/obj" ARCH=arm64 olddefconfig
 
 log "有効化チェック"
-grep -E '^CONFIG_(KSU|MODULES|OVERLAY_FS|KPROBES|KPROBE_EVENTS|KALLSYMS_ALL|LOCALVERSION|MODVERSIONS|PREEMPT)=' out/.config || true
-grep -E '^# CONFIG_MODULE_SIG_FORCE is not set' out/.config || true
-grep -q '^CONFIG_KSU=y' out/.config || die "CONFIG_KSU が有効になっていません"
-grep -q '^CONFIG_KPROBES=y' out/.config || die "CONFIG_KPROBES が有効になっていません"
-grep -q '^CONFIG_OVERLAY_FS=y' out/.config || die "CONFIG_OVERLAY_FS が有効になっていません"
+grep -E '^CONFIG_(KSU|MODULES|OVERLAY_FS|KPROBES|KPROBE_EVENTS|KALLSYMS_ALL|LOCALVERSION|MODVERSIONS|PREEMPT)=' "$OUT/obj/.config" || true
+grep -E '^# CONFIG_MODULE_SIG_FORCE is not set' "$OUT/obj/.config" || true
+grep -q '^CONFIG_KSU=y' "$OUT/obj/.config" || die "CONFIG_KSU が有効になっていません"
+grep -q '^CONFIG_OVERLAY_FS=y' "$OUT/obj/.config" || die "CONFIG_OVERLAY_FS が有効になっていません"
+if [ "$MODE" = "kprobe" ]; then
+  grep -q '^CONFIG_KPROBES=y' "$OUT/obj/.config" || die "CONFIG_KPROBES が有効になっていません"
+else
+  grep -q '^# CONFIG_KPROBES is not set' "$OUT/obj/.config" || die "manual モードでは KPROBES を無効にしてください"
+fi
 
 # ----------------------------------------------------------------- 5. build
 log "ビルド開始"
@@ -100,7 +107,7 @@ if [ -x "$KD/build_tools/bin/clang" ]; then
   # CC を直接 clang に向けてラッパーを回避する
   export PATH="$KD/build_tools/aarch64-linux-android-4.9/bin:$PATH"
   MAKEVARS=(
-    ARCH=arm64 O=out
+    ARCH=arm64 O="$OUT/obj"
     CC="$KD/build_tools/bin/clang"
     CROSS_COMPILE=aarch64-linux-android-
     DTC_EXT="$KD/build_tools/dtc"
@@ -111,7 +118,7 @@ if [ -x "$KD/build_tools/bin/clang" ]; then
 else
   echo "toolchain: システムの clang / aarch64-linux-gnu- を使用"
   MAKEVARS=(
-    ARCH=arm64 O=out
+    ARCH=arm64 O="$OUT/obj"
     CC=clang
     CROSS_COMPILE=aarch64-linux-gnu-
     CLANG_TRIPLE=aarch64-linux-gnu-
@@ -119,29 +126,27 @@ else
 fi
 
 set +e
-make -j"$JOBS" "${MAKEVARS[@]}" KCFLAGS="-Wno-error" Image 2>&1 | tee out/build.log
+make -j"$JOBS" "${MAKEVARS[@]}" KCFLAGS="-Wno-error" Image 2>&1 | tee "$OUT/build.log"
 rc=${PIPESTATUS[0]}
 set -e
-if [ "$rc" -ne 0 ] || [ ! -f out/arch/arm64/boot/Image ]; then
+if [ "$rc" -ne 0 ] || [ ! -f "$OUT/obj/arch/arm64/boot/Image" ]; then
   echo "Image ビルド失敗 (rc=$rc)。ログ末尾:"
-  tail -n 80 out/build.log
+  tail -n 80 "$OUT/build.log"
   die "ビルド失敗"
 fi
 
-IMG="out/arch/arm64/boot/Image"
-gzip -9 -c "$IMG" > out/Image.gz
+IMG="$OUT/obj/arch/arm64/boot/Image"
+gzip -9 -c "$IMG" > "$OUT/Image.gz"
 ls -l "$IMG" out/Image.gz
 
 # ------------------------------------------------------------- 6. repack boot
 log "boot.img を再構築（純正 ramdisk / DTB を維持）"
-rm -rf out/boot_unpack "$ROOT/out"
-mkdir -p "$ROOT/out"
-python3 "$ROOT/d42a/tools/bootimg.py" unpack "$ROOT/d42a/boot/stock_boot.img" out/boot_unpack
-python3 "$ROOT/d42a/tools/bootimg.py" repack out/boot_unpack "$ROOT/out/boot-ksu.img" --kernel out/Image.gz
+rm -rf "$OUT/boot_unpack"
+mkdir -p "$OUT"
+python3 "$ROOT/d42a/tools/bootimg.py" unpack "$ROOT/d42a/boot/stock_boot.img" "$OUT/boot_unpack"
+python3 "$ROOT/d42a/tools/bootimg.py" repack "$OUT/boot_unpack" "$OUT/boot-ksu.img" --kernel "$OUT/Image.gz"
 
-cp -f out/Image.gz "$ROOT/out/Image.gz"
-cp -f "$IMG" "$ROOT/out/Image"
-cp -f out/.config "$ROOT/out/kernel.config"
-cp -f out/build.log "$ROOT/out/build.log"
-ls -l "$ROOT/out"
-echo "DONE: $ROOT/out/boot-ksu.img"
+cp -f "$IMG" "$OUT/Image"
+cp -f "$OUT/obj/.config" "$OUT/kernel.config"
+ls -l "$OUT"
+echo "DONE: $OUT/boot-ksu.img"
