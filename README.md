@@ -22,7 +22,11 @@ d42a/tools/bootimg.py               … boot image v2 unpack/repack
 Actions → `build-kernelsu-official` → Run workflow
 （`source_url` 既定 = 純正ソース tar の Release アセット）
 
-成果物 `boot-ksu-official`: `boot-ksu.img` / `Image` / `Image.gz` / `kernel.config` / `build.log`
+1回の実行で 2 種類をビルドする:
+- **boot-ksu-kprobe**: `CONFIG_KPROBES=y` + path_umount のみ（公式推奨。v0.9.5 は kprobe で
+  execve/read/faccessat/stat/prctl/rename をフックする）
+- **boot-ksu-manual**: `CONFIG_KPROBES=n` + exec/open/read_write/stat へ manual hook 挿入
+  （kprobe が壊れている端末向けフォールバック）
 
 ## 書き込み
 ```

@@ -69,16 +69,20 @@ make O="$OUT/obj" ARCH=arm64 d42a_defconfig
 #  - KPROBES: 0.9.5 の prctl/rename/input フックが kprobe を使う
 #  - MODULE_SIG_FORCE: 純正 vendor .ko は Lenovo の鍵で署名済み。再ビルド鍵で
 #    強制検証すると .ko が全滅するため無効化する
-scripts/config --file out/.config \
-  -e MODULES \
-  -e OVERLAY_FS \
-  -e KALLSYMS \
-  -e KALLSYMS_ALL \
-  -e KPROBES \
-  -e KPROBE_EVENTS \
-  -e KSU \
-  -d MODULE_SIG_FORCE \
-  --set-str LOCALVERSION "-perf"
+KCFG=(
+  -e MODULES
+  -e OVERLAY_FS
+  -e KALLSYMS
+  -e KALLSYMS_ALL
+  -e KSU
+  -d MODULE_SIG_FORCE
+)
+if [ "$MODE" = "kprobe" ]; then
+  KCFG+=(-e KPROBES -e KPROBE_EVENTS)
+else
+  KCFG+=(-d KPROBES -d KPROBE_EVENTS)
+fi
+scripts/config --file "$OUT/obj/.config" "${KCFG[@]}" --set-str LOCALVERSION "-perf"
 
 for c in ${EXTRA_CONFIGS:-}; do
   echo "extra config: $c"
