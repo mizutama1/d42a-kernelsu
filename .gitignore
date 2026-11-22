@@ -5,8 +5,7 @@ work/tools/*.tar.gz
 work/tools/KernelSU-*/
 work/tools/kernelsu*/
 work/patchtest/
-work/ksu/*.img
-work/ksu/Image*
+work/ksu/
 work/out/
 source/
 out/
