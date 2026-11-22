@@ -11,3 +11,10 @@
 - 方針: 2 種類ビルドする
   - A: kprobe モード（KPROBES=y, 追加パッチは path_umount のみ）… 公式推奨
   - B: manual モード（KPROBES=n, exec/open/read_write/stat にフック挿入）… フォールバック
+
+## 2026-11-23 05:40 両バリアントのビルド成功・検証
+- 修正: config パス（out → $OUT/obj）、OUT_DIR の絶対パス化、kernel dir 自動検出が
+  kbuild 生成の obj/Makefile を拾う問題（init/main.c 存在チェックで解決）
+- run 45065888204 で A(kprobe)/B(manual) とも success、artifact 取得
+- 両方 ramdisk/DTB 純正一致、config 差分は想定どおり
+- 端末未接続のため実機テストは保留
