@@ -141,7 +141,7 @@ fi
 
 IMG="$OUT/obj/arch/arm64/boot/Image"
 gzip -9 -c "$IMG" > "$OUT/Image.gz"
-ls -l "$IMG" out/Image.gz
+ls -l "$IMG" "$OUT/Image.gz"
 
 # ------------------------------------------------------------- 6. repack boot
 log "boot.img を再構築（純正 ramdisk / DTB を維持）"
