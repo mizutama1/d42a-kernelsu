@@ -79,14 +79,6 @@ jobs:
           OUT_DIR: out-kprobe
         run: bash d42a/build.sh
 
-      - name: "Build B: manual hook (fallback, KPROBES off)"
-        env:
-          KERNEL_DIR: ${{ inputs.kernel_dir }}
-          EXTRA_CONFIGS: ${{ inputs.extra_configs }}
-          KSU_HOOK_MODE: manual
-          OUT_DIR: out-manual
-        run: bash d42a/build.sh
-
       - name: Upload artifact (kprobe)
         uses: actions/upload-artifact@v4
         with:
@@ -98,6 +90,14 @@ jobs:
             out-kprobe/Image
             out-kprobe/kernel.config
             out-kprobe/build.log
+
+      - name: "Build B: manual hook (fallback, KPROBES off)"
+        env:
+          KERNEL_DIR: ${{ inputs.kernel_dir }}
+          EXTRA_CONFIGS: ${{ inputs.extra_configs }}
+          KSU_HOOK_MODE: manual
+          OUT_DIR: out-manual
+        run: bash d42a/build.sh
 
       - name: Upload artifact (manual)
         uses: actions/upload-artifact@v4

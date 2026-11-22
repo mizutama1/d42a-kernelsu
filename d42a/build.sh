@@ -27,7 +27,8 @@ if [ -z "$KD" ]; then
   while IFS= read -r mk; do
     d="$(dirname "$mk")"
     case "$d" in ./work|./work/*|./out|./out/*|./.git|./.git/*) continue ;; esac
-    if [ -d "$d/arch/arm64" ] && grep -qE '^VERSION[[:space:]]*=[[:space:]]*4' "$mk"; then
+    # kbuild が生成する Makefile（out*/obj 等）を除外するため init/main.c の存在も確認
+    if [ -d "$d/arch/arm64" ] && [ -f "$d/init/main.c" ] &&        grep -qE '^VERSION[[:space:]]*=[[:space:]]*4' "$mk"; then
       KD="$d"; break
     fi
   done < <(find . -maxdepth 6 -type f -name Makefile | sort)
