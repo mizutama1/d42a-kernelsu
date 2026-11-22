@@ -1,0 +1,38 @@
+# d-42A (ELF-8605L) 本家 KernelSU v0.9.5 ビルド
+
+Lenovo d-42A (dtab Compact / trinket / SM6125 / Android 12 / kernel 4.14.190) に
+**本家 KernelSU (tiann/KernelSU) v0.9.5** を入れるためのカーネルビルド。
+
+- 4.14 は非 GKI のため v0.9.5 が最終対応版
+- kprobe を有効化 + manual hook（execve/faccessat/stat/read）を挿入
+- `path_umount` をバックポートしてモジュール umount を有効化
+- 純正 boot.img の ramdisk/DTB を維持し kernel のみ差し替え
+
+## 構成
+```
+.github/workflows/build-kernel.yml  … GitHub Actions（手動実行）
+d42a/build.sh                       … 組込み + ビルド + boot.img 再構築
+d42a/patches/apply_ksu_hooks.py     … manual hook / path_umount 挿入
+d42a/config/d42a_defconfig          … 純正カーネル config（実機から抽出）
+d42a/boot/stock_boot.img            … 純正 boot.img（復旧用）
+d42a/tools/bootimg.py               … boot image v2 unpack/repack
+```
+
+## 実行
+Actions → `build-kernelsu-official` → Run workflow
+（`source_url` 既定 = 純正ソース tar の Release アセット）
+
+成果物 `boot-ksu-official`: `boot-ksu.img` / `Image` / `Image.gz` / `kernel.config` / `build.log`
+
+## 書き込み
+```
+adb reboot bootloader
+fastboot boot boot-ksu.img        # 非破壊テスト
+fastboot flash boot boot-ksu.img  # 本適用
+```
+復旧: `fastboot flash boot d42a/boot/stock_boot.img`
+
+## 注意
+- 純正 config は `CONFIG_MODULE_SIG_FORCE=y`。再ビルド鍵では純正 vendor .ko を
+  検証できないため、このビルドでは無効化している（MODULE_SIG 自体は維持）。
+- `CONFIG_KPROBES` は純正で無効 → 有効化（vermagic には影響しない）。

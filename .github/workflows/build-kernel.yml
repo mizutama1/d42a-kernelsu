@@ -1,0 +1,90 @@
+name: build-kernelsu-official
+
+# 手動実行のみ（Actions タブ → Run workflow）
+on:
+  workflow_dispatch:
+    inputs:
+      source_url:
+        description: "カーネルソース tar の URL（空ならリポジトリ内のソースを使用）"
+        required: false
+        default: "https://github.com/mizutama1/d42a-kernel/releases/download/src-4.14.190/d42a-src.tar"
+      kernel_dir:
+        description: "カーネルソースのディレクトリ（空なら自動検出）"
+        required: false
+        default: ""
+      extra_configs:
+        description: "追加で有効化する CONFIG 名（空白区切り）"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+                      /usr/local/share/boost /opt/hostedtoolcache 2>/dev/null || true
+          df -h /
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            bc bison flex libssl-dev libelf-dev python3 zip unzip \
+            gcc-aarch64-linux-gnu ca-certificates git
+          # 純正 build_tools の clang 10 は libtinfo.so.5 を要求（jammy は libtinfo6 のみ）
+          sudo apt-get install -y libtinfo5 || {
+            echo "libtinfo5 が apt に無いため focal の deb を使用"
+            curl -fL -o /tmp/libtinfo5.deb http://archive.ubuntu.com/ubuntu/pool/universe/n/ncurses/libtinfo5_6.2-0ubuntu2.1_amd64.deb
+            sudo dpkg -i /tmp/libtinfo5.deb
+          }
+
+      - name: Download kernel source (optional)
+        if: ${{ inputs.source_url != '' }}
+        run: |
+          mkdir -p source
+          curl -L --retry 3 --retry-delay 5 -o /tmp/kernel-src.tar.gz "${{ inputs.source_url }}"
+          ls -lh /tmp/kernel-src.tar.gz
+          # Lenovo OSS tar は ./kernel-4.14/msm-4.14 を含む → カーネル部分だけ展開
+          if tar -tf /tmp/kernel-src.tar.gz | grep -q '^\./kernel-4.14/msm-4.14/' ; then
+            echo "kernel subtree only"
+            tar -xf /tmp/kernel-src.tar.gz -C source ./kernel-4.14/msm-4.14
+          else
+            echo "full extract"
+            tar -xf /tmp/kernel-src.tar.gz -C source
+          fi
+          find source -maxdepth 4 -name Makefile | head -5
+          df -h /
+
+      - name: Show toolchain
+        run: |
+          clang --version || true
+          find source -maxdepth 4 -name clang -path '*build_tools*' | head -3
+
+      - name: Build kernel + repack boot.img
+        env:
+          KERNEL_DIR: ${{ inputs.kernel_dir }}
+          EXTRA_CONFIGS: ${{ inputs.extra_configs }}
+        run: bash d42a/build.sh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: boot-ksu-official
+          if-no-files-found: error
+          path: |
+            out/boot-ksu.img
+            out/Image.gz
+            out/Image
+            out/kernel.config
+            out/build.log

@@ -1,0 +1,17 @@
+work/orig/
+work/tools/*.apk
+work/tools/*.zip
+work/tools/*.tar.gz
+work/tools/KernelSU-*/
+work/tools/kernelsu*/
+work/patchtest/
+work/ksu/*.img
+work/ksu/Image*
+work/out/
+source/
+out/
+*.tar
+*.tar.gz
+*.img
+!d42a/boot/stock_boot.img
+*.log
