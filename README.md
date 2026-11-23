@@ -16,7 +16,11 @@ d42a/patches/apply_ksu_hooks.py     … manual hook / path_umount 挿入
 d42a/config/d42a_defconfig          … 純正カーネル config（実機から抽出）
 d42a/boot/stock_boot.img            … 純正 boot.img（復旧用）
 d42a/tools/bootimg.py               … boot image v2 unpack/repack
+d42a/BUILD.md                       … 素材・パッチ・ビルド手順の詳細
 ```
+
+ビルドの詳細（使用ソース、挿入パッチ、config 差分、boot.img 再構築）は
+[`d42a/BUILD.md`](d42a/BUILD.md) を参照。
 
 ## 実行
 Actions → `build-kernelsu-official` → Run workflow
