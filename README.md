@@ -28,6 +28,15 @@ Actions → `build-kernelsu-official` → Run workflow
 - **boot-ksu-manual**: `CONFIG_KPROBES=n` + exec/open/read_write/stat へ manual hook 挿入
   （kprobe が壊れている端末向けフォールバック）
 
+### 実機検証結果（d-42A, 2026-11-23）
+| variant | 起動 | root | `su -c id` | `su -c "cmd arg"` |
+|---|---|---|---|---|
+| kprobe | OK | OK | OK | **NG** (`/system/bin/su: No such file or directory`) |
+| manual | OK | OK | OK | OK |
+
+→ **この端末では `boot-ksu-manual` を採用**（kprobe 版は execve フックが引数によって
+  path 解決を壊すため、複数語の `su -c` が失敗する）
+
 ## 書き込み
 ```
 adb reboot bootloader
