@@ -18,3 +18,10 @@
 - run 45065888204 で A(kprobe)/B(manual) とも success、artifact 取得
 - 両方 ramdisk/DTB 純正一致、config 差分は想定どおり
 - 端末未接続のため実機テストは保留
+
+## 2026-11-23 17:40 実機検証（root 成功・variant B 採用）
+- A(kprobe): `su -c "echo hi"` が ENOENT、`su -c id` は成功 → kprobe sucompat の引数依存不具合
+- B(manual): `su -c id` / `su -c 'id -u'` / `su -c 'pm list packages | wc -l'` すべて成功
+- `fastboot flash boot work/ksu/manual/boot-ksu.img` → 再起動後も root 維持
+- ksud module install: 初回 ENOENT は `adb push` の Git Bash パス変換が原因（`MSYS_NO_PATHCONV=1` で解決）
+- Zygisk Next 1.5.3 + Zygisk Assistant 2.1.4 導入、zn-nsdaemon 起動確認
