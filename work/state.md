@@ -33,3 +33,30 @@
   - KernelSU version 11872（マネージャ APK v0.9.5_11872 と一致）
 - マネージャ: `work/tools/KernelSU_v0.9.5_11872-release.apk`（8,527,498 B）
 - 端末は USB 未接続（adb/fastboot どちらにも見えない）→ 実機テストは未実施
+
+## 2026-11-23 17:40 実機検証完了（root 取得成功）
+
+### 結果: **variant B (manual hook) を採用**
+- `fastboot boot` / `flash boot` とも成功。起動後 `uname -a` = `4.14.190-perf`（ビルド時刻 2026-11-22 20:36:45）
+- マネージャ v0.9.5 (11872): 「動作中」/ カーネル 4.14.190-perf / SELinux Enforcing
+- `su -c id` → `uid=0(root) ... context=u:r:su:s0`
+- `su -c 'id -u'` = 0, `su -c 'pm list packages | wc -l'` = 274（複数語・パイプとも OK）
+
+### variant A (kprobe) の問題（重要）
+- `CONFIG_KPROBES=y` 版では `su -c "<空白を含む1引数>"` が
+  `/system/bin/sh: /system/bin/su: No such file or directory` で失敗
+  （`su -c id` や `su -c id -u` のような分割引数は成功）
+- dmesg では `KernelSU: sys_execve su found` は出るが、その後の exec で失敗
+  → kprobe フック経由の sucompat が引数によって path 解決を壊すと判断
+- **manual hook 版 (B) は全パターン成功** → 既定は B を使う
+
+### モジュール
+- `/data/adb/modules` は純正状態では空、ksud 0.9.5 の `module install` は動作
+  （`adb push` は Git Bash のパス変換で失敗しやすい → `MSYS_NO_PATHCONV=1` 必須）
+- Zygisk Next 1.5.3 (id=zygisksu) インストール・起動確認（zn-nsdaemon × 2）
+- Zygisk Assistant 2.1.4 (id=zygisk-assistant) インストール・起動確認
+- 再起動後も root 維持、モジュール 2 件有効
+
+### 復旧
+- 純正: `fastboot flash boot d42a/boot/stock_boot.img`
+- 作業イメージ: `work/ksu/manual/boot-ksu.img`（採用）, `work/ksu/kprobe/boot-ksu.img`（参考）
