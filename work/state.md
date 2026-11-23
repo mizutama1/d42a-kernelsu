@@ -60,3 +60,9 @@
 ### 復旧
 - 純正: `fastboot flash boot d42a/boot/stock_boot.img`
 - 作業イメージ: `work/ksu/manual/boot-ksu.img`（採用）, `work/ksu/kprobe/boot-ksu.img`（参考）
+
+### 成果物
+- Release `ksu-v0.9.5-nongki`: https://github.com/mizutama1/d42a-kernelsu/releases/tag/ksu-v0.9.5-nongki
+  - boot-ksu-manual.img / boot-ksu-kprobe.img / stock_boot.img / KernelSU APK
+- 注意: この環境では `git push` (github.com への POST) がハングするため、
+  ドキュメント更新は GitHub Contents API で実施した。
