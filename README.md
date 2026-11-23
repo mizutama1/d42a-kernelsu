@@ -49,3 +49,15 @@ fastboot flash boot boot-ksu.img  # 本適用
 - 純正 config は `CONFIG_MODULE_SIG_FORCE=y`。再ビルド鍵では純正 vendor .ko を
   検証できないため、このビルドでは無効化している（MODULE_SIG 自体は維持）。
 - `CONFIG_KPROBES` は純正で無効 → 有効化（vermagic には影響しない）。
+
+## ダウンロード（実機検証済み）
+Release **`ksu-v0.9.5-nongki`** に boot イメージ一式を添付:
+https://github.com/mizutama1/d42a-kernelsu/releases/tag/ksu-v0.9.5-nongki
+
+- `boot-ksu-manual.img` … 推奨（この端末で `su -c "cmd arg"` も動作）
+- `boot-ksu-kprobe.img` … kprobe 版（参考）
+- `stock_boot.img` … 復旧用
+- `KernelSU_v0.9.5_11872-release.apk` … マネージャ
+
+Zygisk Next 1.5.3 + Zygisk Assistant 2.1.4 を ksud で導入し、再起動後も
+root / モジュール 2 件が有効であることを確認済み。
