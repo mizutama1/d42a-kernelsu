@@ -1,38 +1,11 @@
-# 実機テスト手順（端末を接続してから）
+# 現在の状態（2026-11-23 17:40）: 完了
 
-端末: d-42A / HA18JVX3 / bootloader unlocked
+- 端末 d-42A (HA18JVX3) は本家 KernelSU v0.9.5 で root 化済み
+- 採用イメージ: work/ksu/manual/boot-ksu.img（flash 済み・再起動後も維持）
+- モジュール: Zygisk Next 1.5.3 / Zygisk Assistant 2.1.4（有効）
+- 復旧: fastboot flash boot d42a/boot/stock_boot.img
 
-## 1. まず A (kprobe) を非破壊テスト
-    adb devices                       # unauthorized なら端末側で「許可」
-    adb reboot bootloader
-    fastboot devices                  # HA18JVX3 fastboot
-    fastboot boot work/ksu/kprobe/boot-ksu.img
-
-→ 起動できたら root 化の準備完了。起動しない/ループする場合は電源長押しで再起動
-   （fastboot boot は一時起動なので、再起動で純正 kernel に戻る）
-
-## 2. マネージャ導入（起動後）
-    adb install -r work/tools/KernelSU_v0.9.5_11872-release.apk
-    adb shell am start -n me.weishu.kernelsu/.MainActivity
-→ 「KernelSU: 動作中」になっていれば OK。必要なら再起動。
-
-## 3. 本適用
-    adb reboot bootloader
-    fastboot flash boot work/ksu/kprobe/boot-ksu.img
-    fastboot reboot
-
-## 4. A がダメだった場合（フォールバック）
-    fastboot boot work/ksu/manual/boot-ksu.img
-    # 問題なければ
-    fastboot flash boot work/ksu/manual/boot-ksu.img
-
-## 5. 復旧（純正に戻す）
-    fastboot flash boot d42a/boot/stock_boot.img
-    # もしくは work/orig の純正 boot.img
-
-## メモ
-- kprobe が壊れている端末では A が起動ループする可能性 → その場合は B を使う
-- B は KPROBES を無効化し、fs/exec.c, fs/open.c, fs/read_write.c, fs/stat.c に
-  manual hook を挿入したビルド
-- どちらも純正 ramdisk/DTB を維持しているので、失敗時は boot パーティションを
-  純正に戻すだけで完全復旧できる
+## 残タスク（任意）
+1. root 検出アプリでの確認（Zygisk Assistant の denylist 設定）
+2. kprobe 版を使いたい場合の sucompat 修正（execve フックの引数処理）
+3. KernelSU-Next 版 (mizutama1/d42a-kernel) は参考として保持
